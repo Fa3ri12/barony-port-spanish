@@ -147,11 +147,20 @@ void Frame::guiInit() {
 		constexpr float defaultWidth = 1280.f;
 		constexpr float defaultHeight = 720.f;
 
-		const int lockedHeightY = defaultHeight * 2.f - defaultHeight * ((uiScale - .5f) / .5f);
+		// The virtual canvas is inversely proportional to uiScale: doubling uiScale
+		// halves the canvas, which (after the GPU upscales it to the real screen
+		// resolution) exactly doubles the on-screen size of every HUD element.
+		// This keeps "apparent HUD size" == uiScale for any value > 0, instead of
+		// the old linear formula (defaultSize*(3-2*uiScale)) which only behaved
+		// correctly in the 0.5-1.0 range and hit zero at uiScale == 1.5.
+		// Guard against 0/negative values (e.g. a corrupted save) so we never divide by zero.
+		const float safeUIScale = std::max(uiScale, 0.01f);
+
+		const int lockedHeightY = static_cast<int>(defaultHeight / safeUIScale);
 		const int lockedHeightX = (xres * lockedHeightY) / yres;
 		const int lockedHeightSize = lockedHeightX * lockedHeightY;
 
-		const int lockedWidthX = defaultWidth * 2.f - defaultWidth * ((uiScale - .5f) / .5f);
+		const int lockedWidthX = static_cast<int>(defaultWidth / safeUIScale);
 		const int lockedWidthY = (yres * lockedWidthX) / xres;
 		const int lockedWidthSize = lockedWidthX * lockedWidthY;
 
