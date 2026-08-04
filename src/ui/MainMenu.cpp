@@ -6381,7 +6381,7 @@ bind_failed:
 		y += settingsAddSubHeader(*settings_subwindow, y, "hud", Language::get(5114));
 #ifndef NINTENDO
         y += settingsAddSlider(*settings_subwindow, y, "ui_scale", Language::get(5115), Language::get(5116),
-            allSettings.ui_scale, 50.f, 100.f, sliderPercent,
+            allSettings.ui_scale, 50.f, 200.f, sliderPercent,
             [](Slider& slider){soundSliderSetting(slider, true); allSettings.ui_scale = floorf(slider.getValue());});
 #endif
 		y += settingsAddSlider(*settings_subwindow, y, "enemybar_scale", Language::get(5117), Language::get(5118),
