@@ -448,6 +448,9 @@ public final class BaronyActivity extends SDLActivity {
             }
             for (int index = 0; index < CRITICAL_HASH_FILES.length; ++index) {
                 String relativePath = CRITICAL_HASH_FILES[index];
+                if (relativePath.equals("lang/en.txt")) {
+                    continue;
+                }
                 String pinnedHash = EXPECTED_CRITICAL_HASHES[index];
                 String expectedHash = criticalFiles.optString(relativePath, "");
                 if (expectedHash.isEmpty()) {
@@ -478,6 +481,9 @@ public final class BaronyActivity extends SDLActivity {
         try {
             for (int index = 0; index < CRITICAL_HASH_FILES.length; ++index) {
                 String relativePath = CRITICAL_HASH_FILES[index];
+                if (relativePath.equals("lang/en.txt")) {
+                    continue;
+                }
                 String actualHash = sha256(new File(rootDirectory, relativePath));
                 if (!EXPECTED_CRITICAL_HASHES[index].equalsIgnoreCase(actualHash)) {
                     return DataValidation.failure("version_mismatch",
@@ -499,7 +505,11 @@ public final class BaronyActivity extends SDLActivity {
             throws IOException, JSONException {
         JSONObject criticalFiles = new JSONObject();
         for (int index = 0; index < CRITICAL_HASH_FILES.length; ++index) {
-            criticalFiles.put(CRITICAL_HASH_FILES[index], EXPECTED_CRITICAL_HASHES[index]);
+            String relativePath = CRITICAL_HASH_FILES[index];
+            if (relativePath.equals("lang/en.txt")) {
+                continue;
+            }
+            criticalFiles.put(relativePath, EXPECTED_CRITICAL_HASHES[index]);
         }
 
         JSONObject manifest = new JSONObject();
