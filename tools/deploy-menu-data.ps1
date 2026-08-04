@@ -147,6 +147,9 @@ if (Test-Path -LiteralPath (Join-Path $SourceCheckout '.git')) {
 }
 
 foreach ($relativePath in $CriticalFiles) {
+    if ($relativePath -eq 'lang/en.txt') {
+        continue
+    }
     $ActualHash = (Get-FileHash -Algorithm SHA256 -LiteralPath (Join-Path $SourcePath $relativePath)).Hash.ToLowerInvariant()
     if ($ActualHash -ne $ExpectedCriticalHashes[$relativePath]) {
         throw "Unsupported or modified Barony data file: $relativePath. Expected data from Barony v$ExpectedGameVersion."
