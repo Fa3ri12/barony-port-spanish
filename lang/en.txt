@@ -4964,7 +4964,7 @@ The next input you activate will be bound to this action.#
 
 5114 HUD Options#
 5115 HUD Scaling#
-5116 Scale the UI to a larger or smaller size. (Recommended values: 50%, 75%, or 100%)#
+5116 Scale the UI to a larger or smaller size. (Range: 50% to 200%)#
 5117 Enemy Health Bar Scaling#
 5118 Control size of in-world popups for enemy health bars.#
 5119 Popup Scaling#
