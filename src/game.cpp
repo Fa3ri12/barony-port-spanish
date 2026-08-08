@@ -6169,6 +6169,7 @@ void ingameHud()
 			continue;
 		}
 		players[player]->hud.processHUD();
+		players[player]->hudEditor.tick(player); // PoC del Editor de HUD; no-op si no esta activo
 		players[player]->messageZone.processChatbox();
 		updateSkillUpFrame(player);
 		updateLevelUpFrame(player);
