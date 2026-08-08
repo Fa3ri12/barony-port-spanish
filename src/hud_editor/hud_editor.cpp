@@ -8,6 +8,7 @@
 #include "../files.hpp"
 #include "../json.hpp"
 #include "../player.hpp"
+#include "../input.hpp"
 #include "../interface/interface.hpp"
 #include "../ui/Frame.hpp"
 #include "../ui/Button.hpp"
@@ -205,6 +206,15 @@ void HudEditorPoC::tick(int playernum)
 	}
 
 	const bool mouseDown = inputs.bMouseLeft(playernum);
+
+	// Red de seguridad: el mismo boton/tecla que abre el menu de pausa
+	// siempre permite salir del editor (con guardado), sin depender de
+	// que el overlay se haya podido dibujar o tocar correctamente.
+	if (playernum >= 0 && playernum < MAXPLAYERS && Input::inputs[playernum].consumeBinaryToggle("Pause Game"))
+	{
+		exit(playernum, true);
+		return;
+	}
 
 	if (dragging)
 	{
