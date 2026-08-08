@@ -27162,6 +27162,7 @@ failed:
 #endif
 		        {"Settings", Language::get(5765), mainSettings},
 		        });
+			{"Editor de HUD", "Editor de HUD", mainHudEditorPoC}, // PoC, ver README_TEST.md
 			if ( gameModeManager.currentMode != GameModeManager_t::GameModes::GAME_MODE_TUTORIAL
 				&& gameModeManager.currentMode != GameModeManager_t::GameModes::GAME_MODE_TUTORIAL_INIT ) {
 			    options.insert(options.end(), {
