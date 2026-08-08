@@ -1,4 +1,5 @@
 list(APPEND GAME_SOURCES
+    "${CMAKE_CURRENT_SOURCE_DIR}/hud_editor/hud_editor.cpp" # PoC del Editor de HUD, ver README_TEST.md
 	"${CMAKE_CURRENT_SOURCE_DIR}/main.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/android_data_bridge.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/android_dlc_bridge.cpp"
