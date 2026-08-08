@@ -7495,15 +7495,17 @@ int main(int argc, char** argv)
 			bool ranframes = handleEvents();
 #ifdef ANDROID
 			AndroidTouchLayoutMode androidTouchLayout = AndroidTouchLayoutMode::Menu;
-			if ( !intro && !gamePaused && clientnum >= 0 && clientnum < MAXPLAYERS
-				&& players[clientnum] )
-			{
-				androidTouchLayout = players[clientnum]->shootmode
-					&& players[clientnum]->gui_mode == GUI_MODE_NONE
-					? AndroidTouchLayoutMode::Gameplay
-					: AndroidTouchLayoutMode::UI;
-			}
-			androidUpdateTouchLayoutMode(androidTouchLayout);
+           const bool hudEditorActive = clientnum >= 0 && clientnum < MAXPLAYERS
+             && players[clientnum] && players[clientnum]->hudEditor.isActive();
+         if ( !intro && (!gamePaused || hudEditorActive) && clientnum >= 0 && clientnum < MAXPLAYERS
+           && players[clientnum] )
+{
+    androidTouchLayout = players[clientnum]->shootmode
+        && players[clientnum]->gui_mode == GUI_MODE_NONE
+        ? AndroidTouchLayoutMode::Gameplay
+        : AndroidTouchLayoutMode::UI;
+}
+androidUpdateTouchLayoutMode(androidTouchLayout);
 #endif
 			DebugStats.t2PostEvents = std::chrono::high_resolution_clock::now();
 #ifdef DEBUG_EVENT_TIMERS
