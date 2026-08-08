@@ -728,6 +728,7 @@ void createHPMPBars(const int player)
 
 		SDL_Rect pos{ barStartX, hpBarStartY, barWidth, barTotalHeight };
 		hud_t.hpFrame->setSize(pos);
+		hud_t.hpFrame->setSize(HudEditorPoC::applySavedHpBarPosition(pos)); // PoC del Editor de HUD; sin cambios si no hay override guardado
 
 		auto fadeFrame = hud_t.hpFrame->addFrame("hp fade frame");
 		fadeFrame->setSize(SDL_Rect{0, 0, barWidth, barTotalHeight});
