@@ -18,6 +18,7 @@
 #include "input.hpp"
 #include "ui/Frame.hpp"
 #include "ui/Field.hpp"
+#include "hud_editor/hud_editor.hpp" // PoC del Editor de HUD, ver README_TEST.md
 
 
 //Splitscreen support stuff.
@@ -1760,6 +1761,9 @@ public:
 		void setCursorDisabled(bool disabled) { if ( cursorFrame ) { cursorFrame->setDisabled(disabled); } };
 		const char* getCrosshairPath();
 	} hud;
+     // PoC del Editor de HUD (ver src/hud_editor/ y README_TEST.md).
+// Completamente inerte si nunca se llama a hudEditor.enter().
+       HudEditorPoC hudEditor;
 
 	class Magic_t
 	{
