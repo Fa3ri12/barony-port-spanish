@@ -6169,7 +6169,6 @@ void ingameHud()
 			continue;
 		}
 		players[player]->hud.processHUD();
-		players[player]->hudEditor.tick(player); // PoC del Editor de HUD; no-op si no esta activo
 		players[player]->messageZone.processChatbox();
 		updateSkillUpFrame(player);
 		updateLevelUpFrame(player);
@@ -7495,10 +7494,8 @@ int main(int argc, char** argv)
 			bool ranframes = handleEvents();
 #ifdef ANDROID
 			AndroidTouchLayoutMode androidTouchLayout = AndroidTouchLayoutMode::Menu;
-           const bool hudEditorActive = clientnum >= 0 && clientnum < MAXPLAYERS
-             && players[clientnum] && players[clientnum]->hudEditor.isActive();
-         if ( !intro && (!gamePaused || hudEditorActive) && clientnum >= 0 && clientnum < MAXPLAYERS
-           && players[clientnum] )
+if (!intro && !gamePaused && clientnum >= 0 && clientnum < MAXPLAYERS
+    && players[clientnum])
 {
     androidTouchLayout = players[clientnum]->shootmode
         && players[clientnum]->gui_mode == GUI_MODE_NONE
