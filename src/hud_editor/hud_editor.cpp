@@ -10,6 +10,7 @@
 #include "../player.hpp"
 #include "../input.hpp"
 #include "../ui/Frame.hpp"
+#include "../ui/Field.hpp"
 #include "../ui/Button.hpp"
 #include "../ui/Widget.hpp"
 #include "../ui/MainMenu.hpp"
@@ -96,16 +97,27 @@ void HudEditorPoC::createOverlay(int playernum)
 		return;
 	}
 
+	// Deshabilitar explicitamente todo lo que ya existia en el menu
+	// (lista de botones, logo, etc.) mientras el editor esta abierto.
+	// Agregar el blocker encima NO alcanza por si solo: en las zonas
+	// donde el blocker no dibuja nada propio (la mayor parte de la
+	// pantalla), un toque ahi cae directamente sobre lo que haya
+	// debajo -- por eso se podia seguir tocando "Volver al juego"
+	// aunque el editor estuviera abierto. Deshabilitar cada hijo
+	// existente bloquea esos clicks sin importar donde caigan.
+	for (Frame* child : MainMenu::main_menu_frame->getFrames())
+	{
+		child->setDisabled(true);
+	}
+
 	// Fully transparent full-screen frame, added as a child of the
 	// pause/main menu's own root -- the same pattern mainSettings()
 	// already uses to show the Options window over the button list
 	// without hiding or destroying main_menu_frame (see
-	// README_TEST.md, section 3.8). Its only job is to sit on top of
-	// the button list in the widget tree so clicks/touches land on
-	// our own controls instead of a menu button underneath, and to
-	// drive the drag logic every tick via setTickCallback -- which
-	// keeps running regardless of whether a game is active, exactly
-	// like any other menu widget.
+	// README_TEST.md, section 3.8). It also drives the drag logic
+	// every tick via setTickCallback -- which keeps running
+	// regardless of whether a game is active, exactly like any other
+	// menu widget.
 	blockerFrame = MainMenu::main_menu_frame->addFrame("hud_editor_poc_blocker");
 	blockerFrame->setOwner(playernum);
 	blockerFrame->setSize(SDL_Rect{0, 0, Frame::virtualScreenX, Frame::virtualScreenY});
@@ -119,21 +131,24 @@ void HudEditorPoC::createOverlay(int playernum)
 	SDL_Rect startPos{kDefaultHpBarX, kDefaultHpBarY, kHpBarWidth, kHpBarHeight};
 	startPos = applySavedHpBarPosition(startPos);
 
-	// The placeholder itself: a real HUD background sprite (tinted so
-	// it clearly reads as "the HP bar" without needing the full
-	// live-updating logic), inside a bordered frame that acts as the
-	// draggable/selected handle. This is a self-contained recreation,
-	// never the real in-game hpFrame.
+	// The placeholder itself: a plain, clearly-labeled red box (not a
+	// game asset -- avoids depending on how an unfamiliar sprite
+	// happens to look once tinted). This is a self-contained
+	// recreation, never the real in-game hpFrame.
 	hpPreviewFrame = blockerFrame->addFrame("hud_editor_poc_hp_preview");
 	hpPreviewFrame->setOwner(playernum);
 	hpPreviewFrame->setSize(startPos);
-	hpPreviewFrame->setHollow(true);
+	hpPreviewFrame->setHollow(false);
+	hpPreviewFrame->setColor(makeColor(190, 30, 30, 255));
 	hpPreviewFrame->setBorder(3);
 	hpPreviewFrame->setBorderColor(makeColor(255, 215, 0, 255));
-	hpPreviewFrame->setColor(0);
-	hpPreviewFrame->addImage(SDL_Rect{0, 0, kHpBarWidth, kHpBarHeight},
-		makeColor(255, 110, 110, 255),
-		"*#images/ui/HUD/hpmpbars/HUD_Bars_Base_00.png", "hud_editor_poc_hp_preview_img");
+
+	auto hpLabel = hpPreviewFrame->addField("hud_editor_poc_hp_preview_label", 32);
+	hpLabel->setSize(SDL_Rect{0, 0, kHpBarWidth, kHpBarHeight});
+	hpLabel->setText("BARRA DE VIDA");
+	hpLabel->setFont("fonts/pixel_maz.ttf#12#2");
+	hpLabel->setJustify(Field::justify_t::CENTER);
+	hpLabel->setTextColor(makeColor(255, 255, 255, 255));
 
 	// Minimal toolbar: a single fixed panel, top-left of the screen,
 	// with one button. Deliberately drawn with flat colors only (no
@@ -176,6 +191,16 @@ void HudEditorPoC::destroyOverlay()
 	}
 	hpPreviewFrame = nullptr;
 	toolbarFrame = nullptr;
+
+	// Reactivar todo lo que se deshabilito en createOverlay() para
+	// bloquear los clicks hacia el menu de pausa/principal.
+	if (MainMenu::main_menu_frame)
+	{
+		for (Frame* child : MainMenu::main_menu_frame->getFrames())
+		{
+			child->setDisabled(false);
+		}
+	}
 }
 
 void HudEditorPoC::tickCallback(Widget& widget)
@@ -192,10 +217,10 @@ void HudEditorPoC::tickCallback(Widget& widget)
 		return;
 	}
 
-	// Red de seguridad: el mismo boton/tecla que abre el menu de pausa
-	// tambien permite salir del editor (guardando), sin depender de
-	// que el overlay se pueda tocar correctamente.
-	if (Input::inputs[playernum].consumeBinaryToggle("Pause Game"))
+	// El boton B del gamepad virtual (binding "MenuCancel", el mismo
+	// que usa el resto de los menus del juego para "atras/cancelar")
+	// tambien sirve para guardar y salir del editor.
+	if (Input::inputs[playernum].consumeBinaryToggle("MenuCancel"))
 	{
 		self.exit(playernum, true);
 		return;
