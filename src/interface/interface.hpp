@@ -211,7 +211,6 @@ static const int GUI_MODE_SHOP = 2;
 static const int GUI_MODE_FOLLOWERMENU = 3;
 static const int GUI_MODE_SIGN = 4;
 static const int GUI_MODE_CALLOUT = 5;
-static const int GUI_MODE_HUD_EDITOR = 6; // PoC del Editor de HUD, ver src/hud_editor/
 
 extern int textscroll;
 extern int inventorycategory;
