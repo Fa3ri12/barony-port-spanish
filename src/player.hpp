@@ -1763,8 +1763,7 @@ public:
 	} hud;
      // PoC del Editor de HUD (ver src/hud_editor/ y README_TEST.md).
 // Completamente inerte si nunca se llama a hudEditor.enter().
-       HudEditorPoC hudEditor;
-
+HudEditorPoC hudEditor;
 	class Magic_t
 	{
 		Player& player;
