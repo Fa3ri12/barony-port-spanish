@@ -27212,6 +27212,7 @@ failed:
 #endif
 				{"Adventure Archives", Language::get(5777), mainArchives},
 				{"Settings", Language::get(5778), mainSettings},
+				{"Editor de HUD", "Editor de HUD", mainHudEditorPoC},
 #if !defined(NINTENDO)
 #if !defined(NDEBUG)
 				{"Editor", Language::get(5779), mainEditor},
@@ -27231,6 +27232,7 @@ failed:
 #endif
 				{"Adventure Archives", Language::get(5777), mainArchives},
 				{"Settings", Language::get(5778), mainSettings},
+				{"Editor de HUD", "Editor de HUD", mainHudEditorPoC},
 #if !defined(NINTENDO)
 #if !defined(NDEBUG)
 			    {"Editor", Language::get(5779), mainEditor},
