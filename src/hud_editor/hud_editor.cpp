@@ -9,9 +9,9 @@
 #include "../json.hpp"
 #include "../player.hpp"
 #include "../input.hpp"
-#include "../interface/interface.hpp"
 #include "../ui/Frame.hpp"
 #include "../ui/Button.hpp"
+#include "../ui/Widget.hpp"
 #include "../ui/MainMenu.hpp"
 
 #include <string>
@@ -43,6 +43,15 @@ namespace {
 		return std::string(outputdir) + "/config/hud_editor_poc.json";
 	}
 
+	// Same defaults the real game uses for the HP bar
+	// (Player::HUD_t::HPMP_FRAME_START_X/Y in player.hpp) so that,
+	// with nothing saved yet, the placeholder starts out exactly
+	// where the real bar would.
+	constexpr int kDefaultHpBarX = 14;
+	constexpr int kDefaultHpBarY = 106;
+	constexpr int kHpBarWidth = 222;
+	constexpr int kHpBarHeight = 26;
+
 } // namespace
 
 void HudEditorPoC::enter(int playernum)
@@ -50,27 +59,6 @@ void HudEditorPoC::enter(int playernum)
 	if (active)
 	{
 		return;
-	}
-	if (playernum < 0 || playernum >= MAXPLAYERS || !players[playernum])
-	{
-		return;
-	}
-
-	Player& player = *players[playernum];
-
-	// Remember whatever mode the player was in (should be
-	// GUI_MODE_NONE, since this PoC is only reachable from the pause
-	// menu, but we restore whatever it actually was to be safe).
-	previousGuiMode = player.gui_mode;
-	player.gui_mode = GUI_MODE_HUD_EDITOR;
-
-	// Hide (do NOT destroy, do NOT unpause) the pause menu so the
-	// live game and its real HUD are fully visible again. gamePaused
-	// is a completely separate global flag and is never touched here,
-	// so gameplay logic stays frozen for the whole editing session.
-	if (MainMenu::main_menu_frame)
-	{
-		MainMenu::main_menu_frame->setInvisible(true);
 	}
 
 	dragging = false;
@@ -83,58 +71,74 @@ void HudEditorPoC::enter(int playernum)
 
 void HudEditorPoC::exit(int playernum, bool save)
 {
+	(void)playernum;
+
 	if (!active)
 	{
 		return;
 	}
-	if (playernum < 0 || playernum >= MAXPLAYERS || !players[playernum])
-	{
-		return;
-	}
-
-	Player& player = *players[playernum];
 
 	if (save)
 	{
-		savePosition(playernum);
+		savePosition();
 	}
 
 	destroyOverlay();
 
-	if (MainMenu::main_menu_frame)
-	{
-		MainMenu::main_menu_frame->setInvisible(false);
-	}
-
-	player.gui_mode = previousGuiMode;
 	dragging = false;
 	active = false;
 }
 
 void HudEditorPoC::createOverlay(int playernum)
 {
-	Player& player = *players[playernum];
-	Frame* hudFrame = player.hud.hudFrame;
-	if (!hudFrame)
+	if (!MainMenu::main_menu_frame)
 	{
 		return;
 	}
 
-	// A hollow rectangle that tracks the HP bar's real Frame every
-	// tick (see tick() below). Purely visual -- it never itself
-	// receives input.
-	highlightFrame = hudFrame->addFrame("hud_editor_poc_highlight");
-	highlightFrame->setOwner(playernum);
-	highlightFrame->setHollow(true);
-	highlightFrame->setBorder(3);
-	highlightFrame->setBorderColor(makeColor(255, 215, 0, 255));
-	highlightFrame->setColor(0);
-	highlightFrame->setDisabled(true); // never intercepts clicks
+	// Fully transparent full-screen frame, added as a child of the
+	// pause/main menu's own root -- the same pattern mainSettings()
+	// already uses to show the Options window over the button list
+	// without hiding or destroying main_menu_frame (see
+	// README_TEST.md, section 3.8). Its only job is to sit on top of
+	// the button list in the widget tree so clicks/touches land on
+	// our own controls instead of a menu button underneath, and to
+	// drive the drag logic every tick via setTickCallback -- which
+	// keeps running regardless of whether a game is active, exactly
+	// like any other menu widget.
+	blockerFrame = MainMenu::main_menu_frame->addFrame("hud_editor_poc_blocker");
+	blockerFrame->setOwner(playernum);
+	blockerFrame->setSize(SDL_Rect{0, 0, Frame::virtualScreenX, Frame::virtualScreenY});
+	blockerFrame->setActualSize(blockerFrame->getSize());
+	blockerFrame->setColor(0);
+	blockerFrame->setBorder(0);
+	blockerFrame->setTickCallback(&HudEditorPoC::tickCallback);
+
+	// Starting position: whatever was last saved, or the same default
+	// the real HP bar uses if nothing was ever saved yet.
+	SDL_Rect startPos{kDefaultHpBarX, kDefaultHpBarY, kHpBarWidth, kHpBarHeight};
+	startPos = applySavedHpBarPosition(startPos);
+
+	// The placeholder itself: a real HUD background sprite (tinted so
+	// it clearly reads as "the HP bar" without needing the full
+	// live-updating logic), inside a bordered frame that acts as the
+	// draggable/selected handle. This is a self-contained recreation,
+	// never the real in-game hpFrame.
+	hpPreviewFrame = blockerFrame->addFrame("hud_editor_poc_hp_preview");
+	hpPreviewFrame->setOwner(playernum);
+	hpPreviewFrame->setSize(startPos);
+	hpPreviewFrame->setHollow(true);
+	hpPreviewFrame->setBorder(3);
+	hpPreviewFrame->setBorderColor(makeColor(255, 215, 0, 255));
+	hpPreviewFrame->setColor(0);
+	hpPreviewFrame->addImage(SDL_Rect{0, 0, kHpBarWidth, kHpBarHeight},
+		makeColor(255, 110, 110, 255),
+		"*#images/ui/HUD/hpmpbars/HUD_Bars_Base_00.png", "hud_editor_poc_hp_preview_img");
 
 	// Minimal toolbar: a single fixed panel, top-left of the screen,
 	// with one button. Deliberately drawn with flat colors only (no
 	// image assets) to avoid depending on any texture path.
-	toolbarFrame = hudFrame->addFrame("hud_editor_poc_toolbar");
+	toolbarFrame = blockerFrame->addFrame("hud_editor_poc_toolbar");
 	toolbarFrame->setOwner(playernum);
 	toolbarFrame->setSize(SDL_Rect{16, 16, 260, 48});
 	toolbarFrame->setBorder(2);
@@ -163,107 +167,83 @@ void HudEditorPoC::createOverlay(int playernum)
 
 void HudEditorPoC::destroyOverlay()
 {
-	if (highlightFrame)
+	if (blockerFrame)
 	{
-		highlightFrame->removeSelf();
-		highlightFrame = nullptr;
+		// removing the blocker also removes hpPreviewFrame and
+		// toolbarFrame, both of which are its children
+		blockerFrame->removeSelf();
+		blockerFrame = nullptr;
 	}
-	if (toolbarFrame)
-	{
-		// removing the parent frame also removes the button inside it
-		toolbarFrame->removeSelf();
-		toolbarFrame = nullptr;
-	}
+	hpPreviewFrame = nullptr;
+	toolbarFrame = nullptr;
 }
 
-void HudEditorPoC::tick(int playernum)
+void HudEditorPoC::tickCallback(Widget& widget)
 {
-	if (!active)
-	{
-		return;
-	}
+	const int playernum = widget.getOwner();
 	if (playernum < 0 || playernum >= MAXPLAYERS || !players[playernum])
 	{
 		return;
 	}
 
-	Player& player = *players[playernum];
-	Frame* hudFrame = player.hud.hudFrame;
-	Frame* hpFrame = player.hud.hpFrame;
-	if (!hudFrame || !hpFrame)
+	HudEditorPoC& self = players[playernum]->hudEditor;
+	if (!self.active || !self.blockerFrame || !self.hpPreviewFrame)
 	{
 		return;
 	}
 
-	// Keep the highlight aligned to the real HP bar frame every
-	// single tick, whether or not it is currently being dragged --
-	// this is what guarantees the highlight can never visually drift
-	// away from the element it represents.
-	if (highlightFrame)
+	// Red de seguridad: el mismo boton/tecla que abre el menu de pausa
+	// tambien permite salir del editor (guardando), sin depender de
+	// que el overlay se pueda tocar correctamente.
+	if (Input::inputs[playernum].consumeBinaryToggle("Pause Game"))
 	{
-		const SDL_Rect hpPos = hpFrame->getSize();
-		highlightFrame->setSize(SDL_Rect{hpPos.x - 4, hpPos.y - 4, hpPos.w + 8, hpPos.h + 8});
+		self.exit(playernum, true);
+		return;
 	}
 
 	const bool mouseDown = inputs.bMouseLeft(playernum);
 
-	// Red de seguridad: el mismo boton/tecla que abre el menu de pausa
-	// siempre permite salir del editor (con guardado), sin depender de
-	// que el overlay se haya podido dibujar o tocar correctamente.
-	if (playernum >= 0 && playernum < MAXPLAYERS && Input::inputs[playernum].consumeBinaryToggle("Pause Game"))
-	{
-		exit(playernum, true);
-		return;
-	}
-
-	if (dragging)
+	if (self.dragging)
 	{
 		if (!mouseDown)
 		{
-			dragging = false;
+			self.dragging = false;
 		}
 		else
 		{
 			// getRelativeMousePosition() returns the cursor position in
-			// the SAME coordinate space as hudFrame's own children's
-			// SDL_Rect (i.e. the same space hpFrame->getSize() lives
-			// in), so no manual scale conversion is required here.
-			const SDL_Rect cursorRel = hudFrame->getRelativeMousePosition(true);
-			SDL_Rect newPos = hpFrame->getSize();
-			newPos.x = cursorRel.x - grabOffsetX;
-			newPos.y = cursorRel.y - grabOffsetY;
-			hpFrame->setSize(newPos);
+			// the SAME coordinate space as blockerFrame's own children's
+			// SDL_Rect (i.e. the same space hpPreviewFrame->getSize()
+			// lives in), so no manual scale conversion is required here.
+			const SDL_Rect cursorRel = self.blockerFrame->getRelativeMousePosition(true);
+			SDL_Rect newPos = self.hpPreviewFrame->getSize();
+			newPos.x = cursorRel.x - self.grabOffsetX;
+			newPos.y = cursorRel.y - self.grabOffsetY;
+			self.hpPreviewFrame->setSize(newPos);
 		}
 	}
-	else if (mouseDown && !wasMouseDownLastTick && hpFrame->capturesMouseInRealtimeCoords())
+	else if (mouseDown && !self.wasMouseDownLastTick && self.hpPreviewFrame->capturesMouseInRealtimeCoords())
 	{
 		// bMouseLeft() is a level (held) signal, not an edge signal,
-		// so the edge is computed manually here via
-		// wasMouseDownLastTick. This is what stops a held click from
-		// re-triggering drag-start logic every tick.
-		const SDL_Rect cursorRel = hudFrame->getRelativeMousePosition(true);
-		const SDL_Rect hpPosNow = hpFrame->getSize();
-		grabOffsetX = cursorRel.x - hpPosNow.x;
-		grabOffsetY = cursorRel.y - hpPosNow.y;
-		dragging = true;
+		// so the edge is computed manually via wasMouseDownLastTick.
+		const SDL_Rect cursorRel = self.blockerFrame->getRelativeMousePosition(true);
+		const SDL_Rect hpPosNow = self.hpPreviewFrame->getSize();
+		self.grabOffsetX = cursorRel.x - hpPosNow.x;
+		self.grabOffsetY = cursorRel.y - hpPosNow.y;
+		self.dragging = true;
 	}
 
-	wasMouseDownLastTick = mouseDown;
+	self.wasMouseDownLastTick = mouseDown;
 }
 
-void HudEditorPoC::savePosition(int playernum)
+void HudEditorPoC::savePosition()
 {
-	if (playernum < 0 || playernum >= MAXPLAYERS || !players[playernum])
-	{
-		return;
-	}
-	Frame* hpFrame = players[playernum]->hud.hpFrame;
-	if (!hpFrame)
+	if (!hpPreviewFrame)
 	{
 		return;
 	}
 
-	const SDL_Rect pos = hpFrame->getSize();
+	const SDL_Rect pos = hpPreviewFrame->getSize();
 
 	HudEditorPoCData data;
 	data.hasPosition = true;
@@ -281,9 +261,11 @@ SDL_Rect HudEditorPoC::applySavedHpBarPosition(SDL_Rect basePos)
 	if (!FileHelper::readObject(path.c_str(), data))
 	{
 		// File missing / unreadable / corrupt: keep the position the
-		// game already computed. This is the "usar la posicion
+		// caller already computed. This is the "usar la posicion
 		// original si el archivo no existe" requirement, satisfied
-		// with no special-casing at the call site.
+		// with no special-casing at the call site -- and it applies
+		// equally to the real game's HP bar and to the editor's own
+		// placeholder, since both call this same function.
 		return basePos;
 	}
 	if (!data.hasPosition)
@@ -299,6 +281,8 @@ SDL_Rect HudEditorPoC::applySavedHpBarPosition(SDL_Rect basePos)
 
 void mainHudEditorPoC(Button& button)
 {
+	(void)button;
+
 	Player::soundActivate();
 
 	const int player = MainMenu::getMenuOwner();
