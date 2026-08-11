@@ -12629,7 +12629,7 @@ void Player::HUD_t::processHUD()
     controllerFrame->setSize(hudSize);
 	hudFrame->setSize(hudSize);
 
-	if ( (gamePaused && player.gui_mode != GUI_MODE_HUD_EDITOR) || nohud || !players[player.playernum]->isLocalPlayer() )
+	if ( gamePaused || nohud || !players[player.playernum]->isLocalPlayer() )
 	{
 		// hide
 		hudFrame->setDisabled(true);
