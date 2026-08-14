@@ -59,6 +59,13 @@ public:
 	// whether the editor itself is currently open.
 	static SDL_Rect applySavedHpBarPosition(SDL_Rect basePos);
 
+	// Reaplica la posicion guardada sobre el hpFrame REAL del jugador,
+	// si ya existe en esta sesion (partida ya en curso). Se llama
+	// desde MainMenu::closeMainMenu() (ver README_TEST.md, 3.6) para
+	// que los cambios se vean apenas volves al juego, sin depender de
+	// arrancar una partida nueva o reiniciar la app.
+	static void reapplyToLiveHud(int playernum);
+
 private:
 	bool active = false;
 
