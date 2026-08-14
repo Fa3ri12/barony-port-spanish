@@ -122,7 +122,7 @@ void HudEditorPoC::createOverlay(int playernum)
 	blockerFrame->setOwner(playernum);
 	blockerFrame->setSize(SDL_Rect{0, 0, Frame::virtualScreenX, Frame::virtualScreenY});
 	blockerFrame->setActualSize(blockerFrame->getSize());
-	blockerFrame->setColor(0);
+	blockerFrame->setColor(makeColor(0, 0, 0, 255));
 	blockerFrame->setBorder(0);
 	blockerFrame->setTickCallback(&HudEditorPoC::tickCallback);
 
@@ -155,21 +155,27 @@ void HudEditorPoC::createOverlay(int playernum)
 	// image assets) to avoid depending on any texture path.
 	toolbarFrame = blockerFrame->addFrame("hud_editor_poc_toolbar");
 	toolbarFrame->setOwner(playernum);
-	toolbarFrame->setSize(SDL_Rect{16, 16, 260, 48});
-	toolbarFrame->setBorder(2);
-	toolbarFrame->setBorderColor(makeColor(255, 255, 255, 255));
-	toolbarFrame->setColor(makeColor(20, 20, 20, 200));
+	toolbarFrame->setSize(SDL_Rect{16, 16, 208, 84});
+	toolbarFrame->setHollow(true);
+	toolbarFrame->setBorder(0);
+	toolbarFrame->setColor(0);
 
 	auto saveButton = toolbarFrame->addButton("hud_editor_poc_save_button");
 	saveButton->setOwner(playernum);
-	saveButton->setSize(SDL_Rect{4, 4, 252, 40});
+	saveButton->setSize(SDL_Rect{4, 4, 200, 76});
 	saveButton->setText("Guardar y salir (PoC)");
-	saveButton->setFont("fonts/pixel_maz.ttf#16#2");
+	saveButton->setFont("fonts/pixel_maz_multiline.ttf#16#2");
 	saveButton->setJustify(Button::justify_t::CENTER);
+	// Mismo diseño de boton que ya usa el juego en la ventana de
+	// Settings (ver ui/MainMenu.cpp, GenericSettingsWindow), en vez de
+	// un rectangulo de color plano.
+	saveButton->setBackground("*images/ui/Main Menus/Settings/GenericWindow/UI_MM14_ButtonStandard00.png");
+	saveButton->setBackgroundHighlighted("*images/ui/Main Menus/Settings/GenericWindow/UI_MM14_ButtonStandardHigh00.png");
+	saveButton->setBackgroundActivated("*images/ui/Main Menus/Settings/GenericWindow/UI_MM14_ButtonStandardPress00.png");
+	saveButton->setColor(makeColor(255, 255, 255, 255));
+	saveButton->setHighlightColor(makeColor(255, 255, 255, 255));
 	saveButton->setTextColor(makeColor(255, 255, 255, 255));
-	saveButton->setTextHighlightColor(makeColor(255, 255, 0, 255));
-	saveButton->setColor(0);
-	saveButton->setHighlightColor(makeColor(255, 255, 255, 40));
+	saveButton->setTextHighlightColor(makeColor(255, 255, 255, 255));
 	saveButton->setCallback([](Button& button) {
 		const int player = button.getOwner();
 		if (player < 0 || player >= MAXPLAYERS || !players[player])
@@ -317,4 +323,25 @@ void mainHudEditorPoC(Button& button)
 	}
 
 	players[player]->hudEditor.enter(player);
+}
+
+void HudEditorPoC::reapplyToLiveHud(int playernum)
+{
+	if (playernum < 0 || playernum >= MAXPLAYERS || !players[playernum])
+	{
+		return;
+	}
+
+	Frame* hpFrame = players[playernum]->hud.hpFrame;
+	if (!hpFrame)
+	{
+		// No hay una barra de vida real creada todavia en esta sesion
+		// (por ejemplo, el jugador todavia no empezo ninguna partida).
+		// createHPMPBars() va a leer la posicion guardada por su
+		// cuenta la primera vez que se cree -- no hay nada mas para
+		// hacer aca.
+		return;
+	}
+
+	hpFrame->setSize(applySavedHpBarPosition(hpFrame->getSize()));
 }
