@@ -27771,6 +27771,7 @@ failed:
 	}
 
 	void closeMainMenu() {
+		HudEditorPoC::reapplyToLiveHud(getMenuOwner());
 		destroyMainMenu();
 		gamePaused = false;
 		for ( int i = 0; i < MAXPLAYERS; ++i )
